@@ -52,12 +52,28 @@ class Store:
         self.db.commit()
 
     def since(self, direction: str, after: int, limit: int = 20):
+        """Oldest-first, for the device's incremental catch-up: it advances its
+        watermark to whatever it's given, so skipping ahead would lose whatever
+        sat between the old watermark and the newer id."""
         return self.db.execute(
             "SELECT * FROM messages WHERE direction = ? AND id > ? "
             "AND (photo_bytes IS NOT NULL OR audio_bytes IS NOT NULL) "
             "ORDER BY id LIMIT ?",
             (direction, after, limit),
         ).fetchall()
+
+    def latest(self, direction: str, after: int, limit: int = 20):
+        """Newest-first-then-reversed, for a listing that always re-fetches
+        from `after` with no cursor of its own (the phone's reply list). Using
+        `since` here would mean the oldest `limit` rows win forever once a
+        direction passes `limit` rows, hiding everything newer."""
+        rows = self.db.execute(
+            "SELECT * FROM messages WHERE direction = ? AND id > ? "
+            "AND (photo_bytes IS NOT NULL OR audio_bytes IS NOT NULL) "
+            "ORDER BY id DESC LIMIT ?",
+            (direction, after, limit),
+        ).fetchall()
+        return list(reversed(rows))
 
     def get(self, msg_id: int):
         return self.db.execute(

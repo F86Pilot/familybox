@@ -263,7 +263,7 @@ async def health():
 
 @app.get("/api/v1/replies", dependencies=[Auth])
 async def replies(since: int = 0, limit: int = 20):
-    rows = store.since("reply", since, min(limit, 50))
+    rows = store.latest("reply", since, min(limit, 50))
     return {
         "messages": [_describe(r) for r in rows],
         "latest": int(rows[-1]["id"]) if rows else since,
